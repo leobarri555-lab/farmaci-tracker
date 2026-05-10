@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1a1a18" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Farmaci" />
+<title>Farmaci Tracker</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231a1a18' rx='12'/><text y='.9em' font-size='80' x='10'>💊</text></svg>" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f9f8f6; --surface: #ffffff; --surface2: #f1f0ed;
+  --border: rgba(0,0,0,0.10); --border2: rgba(0,0,0,0.18);
+  --text: #1a1a18; --text2: #6b6b67; --text3: #9a9994;
+  --red: #A32D2D; --red-bg: #FCEBEB; --red-b: #F09595;
+  --amber: #854F0B; --amber-bg: #FAEEDA; --amber-b: #FAC775;
+  --green: #3B6D11; --green-bg: #EAF3DE; --green-b: #C0DD97;
+  --blue: #185FA5; --blue-bg: #E6F1FB; --blue-b: #B5D4F4;
+  --radius: 8px; --radius-lg: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1a; --surface: #242422; --surface2: #2e2e2c;
+    --border: rgba(255,255,255,0.10); --border2: rgba(255,255,255,0.20);
+    --text: #f0ede8; --text2: #9a9994; --text3: #6b6b67;
+    --red: #F7C1C1; --red-bg: #501313; --red-b: #791F1F;
+    --amber: #FAC775; --amber-bg: #412402; --amber-b: #633806;
+    --green: #C0DD97; --green-bg: #173404; --green-b: #27500A;
+    --blue: #B5D4F4; --blue-bg: #042C53; --blue-b: #0C447C;
+  }
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; }
+
+.header {
+  position: sticky; top: 0; z-index: 50; background: var(--bg);
+  padding: calc(var(--safe-top) + 12px) 1rem 12px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.header h1 { font-size: 18px; font-weight: 500; }
+.header p { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+.content { padding: 1rem 1rem calc(var(--safe-bottom) + 80px); max-width: 640px; margin: 0 auto; }
+
+.install-banner { background: var(--green-bg); border: 0.5px solid var(--green-b); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.install-banner.hidden { display: none; }
+.install-banner p { font-size: 13px; color: var(--green); line-height: 1.5; flex: 1; }
+
+.summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 1.25rem; }
+.metric { background: var(--surface2); border-radius: var(--radius); padding: 12px; }
+.metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 500; }
+.c-red { color: var(--red); } .c-amber { color: var(--amber); } .c-green { color: var(--green); }
+
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+.card.urgent { border-left: 3px solid var(--red); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+.card.warning { border-left: 3px solid #EF9F27; border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.card-name { font-size: 15px; font-weight: 500; }
+.card-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: var(--radius); font-weight: 500; white-space: nowrap; }
+.badge.urgent { background: var(--red-bg); color: var(--red); }
+.badge.warning { background: var(--amber-bg); color: var(--amber); }
+.badge.ok { background: var(--green-bg); color: var(--green); }
+.progress-bar { height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin: 8px 0; }
+.progress-fill { height: 100%; border-radius: 99px; }
+.fill-d { background: var(--red); } .fill-w { background: #EF9F27; } .fill-o { background: #639922; }
+.card-info { display: flex; gap: 12px; font-size: 12px; color: var(--text2); flex-wrap: wrap; margin-top: 6px; }
+.card-info strong { color: var(--text); font-weight: 500; }
+.card-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+/* Storico rifornimenti */
+.history { margin-top: 12px; border-top: 0.5px solid var(--border); padding-top: 10px; }
+.history-title { font-size: 11px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.history-empty { font-size: 12px; color: var(--text3); font-style: italic; }
+.history-list { display: flex; flex-direction: column; gap: 4px; }
+.history-item { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 5px 8px; background: var(--surface2); border-radius: 6px; }
+.history-date { color: var(--text2); }
+.history-qty { font-weight: 500; color: var(--green); }
+
+/* Riordino modale */
+.reorder-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: flex-end; justify-content: center; }
+.reorder-modal-overlay.open { display: flex; }
+
+.btn { font-family: inherit; border-radius: var(--radius); border: 0.5px solid var(--border2); padding: 8px 13px; font-size: 13px; cursor: pointer; background: transparent; color: var(--text); -webkit-tap-highlight-color: transparent; }
+.btn:active { opacity: 0.7; }
+.btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn-reorder { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-b); font-size: 12px; padding: 6px 10px; }
+.btn-del { color: var(--red); border-color: var(--red-b); font-size: 12px; padding: 6px 10px; }
+.btn-sm { font-size: 12px; padding: 6px 10px; }
+.btn-hist { background: var(--surface2); border-color: var(--border2); font-size: 12px; padding: 6px 10px; color: var(--text2); }
+
+.empty { text-align: center; padding: 3rem 1rem; color: var(--text2); font-size: 14px; line-height: 1.7; }
+
+.fab { position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--text); color: var(--bg); font-size: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; box-shadow: 0 2px 14px rgba(0,0,0,0.22); z-index: 40; -webkit-tap-highlight-color: transparent; }
+.fab:active { transform: scale(0.93); }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 1.25rem 1.25rem calc(var(--safe-bottom) + 1.25rem); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
+.modal-handle { width: 36px; height: 4px; background: var(--surface2); border-radius: 99px; margin: 0 auto 1.25rem; }
+.modal h3 { font-size: 16px; font-weight: 500; margin-bottom: 1.25rem; }
+.modal .subtitle { font-size: 13px; color: var(--text2); margin-bottom: 1rem; margin-top: -0.75rem; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+.field input { width: 100%; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 11px 12px; font-size: 15px; background: var(--surface); color: var(--text); font-family: inherit; -webkit-appearance: none; }
+.field input:focus { outline: none; border-color: var(--blue); }
+.modal-actions { display: flex; gap: 8px; margin-top: 1.25rem; }
+.modal-actions .btn { flex: 1; text-align: center; padding: 13px; font-size: 15px; }
+
+.toast { position: fixed; bottom: calc(var(--safe-bottom) + 90px); left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 99px; font-size: 13px; opacity: 0; transition: opacity 0.25s; z-index: 200; white-space: nowrap; max-width: 88vw; text-align: center; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Farmaci Tracker</h1>
+    <p id="headerSub">Caricamento...</p>
+  </div>
+</div>
+
+<div class="content">
+  <div class="install-banner hidden" id="installBanner">
+    <p><strong>Installa l'app</strong><br>Aggiungila alla schermata Home per usarla come app nativa.</p>
+    <button class="btn btn-primary btn-sm" id="installBtn">Installa</button>
+  </div>
+
+  <div class="summary" id="summary"></div>
+  <div class="cards" id="cards"></div>
+</div>
+
+<button class="fab" onclick="openModal()" aria-label="Aggiungi farmaco">+</button>
+
+<!-- Modal: aggiungi / modifica farmaco -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="modalTitle">Aggiungi farmaco</h3>
+    <div class="field"><label>Nome farmaco</label><input type="text" id="fNome" placeholder="es. Paracetamolo 500mg" /></div>
+    <div class="field"><label>Unità (compresse, ml, capsule...)</label><input type="text" id="fUnita" placeholder="es. compresse" /></div>
+    <div class="field"><label>Giacenza attuale</label><input type="number" id="fGiacenza" placeholder="es. 30" inputmode="decimal" /></div>
+    <div class="field"><label>Consumo giornaliero</label><input type="number" id="fConsumo" placeholder="es. 2" inputmode="decimal" /></div>
+    <div class="field"><label>Quantità da ordinare (opzionale)</label><input type="number" id="fOrdine" placeholder="es. 60" inputmode="decimal" /></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="saveFarmaco()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: rifornimento con quantità personalizzabile -->
+<div class="modal-overlay" id="reorderOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="reorderTitle">Rifornimento</h3>
+    <p class="subtitle" id="reorderSub"></p>
+    <div class="field">
+      <label>Quantità aggiunta</label>
+      <input type="number" id="rQta" inputmode="decimal" placeholder="es. 30" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeReorder()">Annulla</button>
+      <button class="btn btn-primary" onclick="confirmReorder()">Conferma rifornimento</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ALERT = 7;
+const MAX_HISTORY = 3;
+
+let farmaci = JSON.parse(localStorage.getItem('farmaci') || 'null') || [
+  { id:1, nome:'Metformina 500mg', unita:'compresse', giacenza:45, consumo:2, ordine:90, history:[] },
+  { id:2, nome:'Ramipril 5mg', unita:'compresse', giacenza:8, consumo:1, ordine:30, history:[] },
+  { id:3, nome:'Atorvastatina 20mg', unita:'compresse', giacenza:28, consumo:1, ordine:30, history:[] },
+  { id:4, nome:'Aspirina 100mg', unita:'compresse', giacenza:3, consumo:1, ordine:30, history:[] },
+];
+
+let editId = null;
+let reorderId = null;
+let nextId = Math.max(...farmaci.map(f=>f.id), 9) + 1;
+// assicura che tutti i farmaci abbiano history
+farmaci = farmaci.map(f => ({ history: [], ...f }));
+
+function persist() { localStorage.setItem('farmaci', JSON.stringify(farmaci)); }
+function gg(f) { return f.consumo ? Math.floor(f.giacenza / f.consumo) : Infinity; }
+function stato(f) { const g=gg(f); return g<=ALERT?'urgent':g<=ALERT*2?'warning':'ok'; }
+function label(s) { return s==='urgent'?'Ordina subito':s==='warning'?'Scorte basse':'Scorte ok'; }
+function fmt(d) { return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'}); }
+
+function renderHistory(f) {
+  if (!f.history || !f.history.length) {
+    return `<div class="history-empty">Nessun rifornimento registrato</div>`;
+  }
+  const items = [...f.history].reverse().map(h => `
+    <div class="history-item">
+      <span class="history-date">${fmt(h.data)}</span>
+      <span class="history-qty">+${h.qta} ${f.unita}</span>
+    </div>
+  `).join('');
+  return `<div class="history-list">${items}</div>`;
+}
+
+function render() {
+  const urgenti = farmaci.filter(f=>stato(f)==='urgent').length;
+  const avvisi  = farmaci.filter(f=>stato(f)==='warning').length;
+  const max = Math.max(60,...farmaci.map(f=>{const g=gg(f);return g===Infinity?0:g;}));
+
+  document.getElementById('summary').innerHTML = `
+    <div class="metric"><div class="metric-label">Totale farmaci</div><div class="metric-value">${farmaci.length}</div></div>
+    <div class="metric"><div class="metric-label">Da ordinare subito</div><div class="metric-value ${urgenti>0?'c-red':'c-green'}">${urgenti}</div></div>
+    <div class="metric"><div class="metric-label">In esaurimento</div><div class="metric-value ${avvisi>0?'c-amber':'c-green'}">${avvisi}</div></div>
+    <div class="metric"><div class="metric-label">Soglia avviso</div><div class="metric-value">${ALERT} gg</div></div>
+  `;
+
+  document.getElementById('headerSub').textContent =
+    urgenti>0 ? `${urgenti} farmaco${urgenti>1?'i':''} da ordinare` :
+    avvisi>0  ? `${avvisi} in esaurimento` : 'Tutto ok ✓';
+
+  if (!farmaci.length) {
+    document.getElementById('cards').innerHTML = '<div class="empty">Nessun farmaco.<br>Tocca + per aggiungerne uno.</div>';
+    return;
+  }
+
+  const sorted = [...farmaci].sort((a,b)=>gg(a)-gg(b));
+  document.getElementById('cards').innerHTML = sorted.map(f => {
+    const g=gg(f), s=stato(f);
+    const pct = g===Infinity?100:Math.min(100,Math.round(g/max*100));
+    const fc = s==='urgent'?'fill-d':s==='warning'?'fill-w':'fill-o';
+    const esaur=new Date(); esaur.setDate(esaur.getDate()+g);
+    const ordEnt=new Date(); ordEnt.setDate(ordEnt.getDate()+(g-ALERT));
+    const lastH = f.history && f.history.length ? `Ultimo rifor.: ${fmt(f.history[f.history.length-1].data)}` : '';
+    return `
+    <div class="card ${s}">
+      <div class="card-top">
+        <div><div class="card-name">${f.nome}</div><div class="card-sub">${f.consumo} ${f.unita}/giorno</div></div>
+        <span class="badge ${s}">${label(s)}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill ${fc}" style="width:${pct}%"></div></div>
+      <div class="card-info">
+        <span>Giacenza: <strong>${f.giacenza} ${f.unita}</strong></span>
+        <span>Durata: <strong>${g===Infinity?'—':g+' gg'}</strong></span>
+        ${s!=='ok'&&g!==Infinity?`<span style="color:var(--red)">Esaur. il ${fmt(esaur)}</span>`:''}
+        ${s==='ok'&&g!==Infinity?`<span>Ordina entro ${fmt(ordEnt)}</span>`:''}
+        ${lastH?`<span>${lastH}</span>`:''}
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-reorder" onclick="openReorder(${f.id})">+ Rifornimento</button>
+        <button class="btn btn-sm" onclick="openModal(${f.id})">Modifica</button>
+        <button class="btn btn-del" onclick="elimina(${f.id})">Elimina</button>
+      </div>
+      <div class="history">
+        <div class="history-title">Ultimi ${MAX_HISTORY} rifornimenti</div>
+        ${renderHistory(f)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Modal farmaco ── */
+function openModal(id) {
+  editId = id||null;
+  document.getElementById('modalTitle').textContent = id ? 'Modifica farmaco' : 'Aggiungi farmaco';
+  if (id) {
+    const f=farmaci.find(x=>x.id===id);
+    document.getElementById('fNome').value=f.nome;
+    document.getElementById('fUnita').value=f.unita;
+    document.getElementById('fGiacenza').value=f.giacenza;
+    document.getElementById('fConsumo').value=f.consumo;
+    document.getElementById('fOrdine').value=f.ordine||'';
+  } else {
+    ['fNome','fUnita','fGiacenza','fConsumo','fOrdine'].forEach(i=>document.getElementById(i).value='');
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('fNome').focus(),300);
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); editId=null; }
+
+function saveFarmaco() {
+  const nome=document.getElementById('fNome').value.trim();
+  const unita=document.getElementById('fUnita').value.trim()||'unità';
+  const giacenza=parseFloat(document.getElementById('fGiacenza').value);
+  const consumo=parseFloat(document.getElementById('fConsumo').value);
+  const ordine=parseFloat(document.getElementById('fOrdine').value)||0;
+  if (!nome||isNaN(giacenza)||isNaN(consumo)||consumo<=0) { showToast('Compila tutti i campi obbligatori'); return; }
+  if (editId) {
+    const idx=farmaci.findIndex(f=>f.id===editId);
+    farmaci[idx]={...farmaci[idx],nome,unita,giacenza,consumo,ordine};
+    showToast('Aggiornato');
+  } else {
+    farmaci.push({id:nextId++,nome,unita,giacenza,consumo,ordine,history:[]});
+    showToast('Farmaco aggiunto');
+  }
+  persist(); closeModal(); render();
+}
+
+/* ── Modal rifornimento ── */
+function openReorder(id) {
+  reorderId = id;
+  const f = farmaci.find(x=>x.id===id);
+  document.getElementById('reorderTitle').textContent = `Rifornimento — ${f.nome}`;
+  document.getElementById('reorderSub').textContent = `Giacenza attuale: ${f.giacenza} ${f.unita}`;
+  document.getElementById('rQta').value = f.ordine || '';
+  document.getElementById('reorderOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('rQta').focus(),300);
+}
+function closeReorder() { document.getElementById('reorderOverlay').classList.remove('open'); reorderId=null; }
+
+function confirmReorder() {
+  const qta = parseFloat(document.getElementById('rQta').value);
+  if (isNaN(qta)||qta<=0) { showToast('Inserisci una quantità valida'); return; }
+  const idx = farmaci.findIndex(f=>f.id===reorderId);
+  const f = farmaci[idx];
+  const newHistory = [...(f.history||[]), { data: new Date().toISOString(), qta }];
+  // mantieni solo gli ultimi MAX_HISTORY
+  if (newHistory.length > MAX_HISTORY) newHistory.splice(0, newHistory.length - MAX_HISTORY);
+  farmaci[idx] = { ...f, giacenza: f.giacenza + qta, history: newHistory };
+  persist(); closeReorder(); render();
+  showToast(`+${qta} ${f.unita} aggiunte a ${f.nome}`);
+}
+
+function elimina(id) { farmaci=farmaci.filter(f=>f.id!==id); persist(); render(); showToast('Eliminato'); }
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// Chiudi modal cliccando fuori
+['modalOverlay','reorderOverlay'].forEach(id=>{
+  document.getElementById(id).addEventListener('click', e=>{
+    if (e.target===document.getElementById(id)) {
+      id==='modalOverlay'?closeModal():closeReorder();
+    }
+  });
+});
+
+// PWA install
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  document.getElementById('installBanner').classList.remove('hidden');
+});
+document.getElementById('installBtn').addEventListener('click', async ()=>{
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const {outcome}=await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById('installBanner').classList.add('hidden');
+  if (outcome==='accepted') showToast('App installata!');
+});
+window.addEventListener('appinstalled',()=>document.getElementById('installBanner').classList.add('hidden'));
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+}
+
+render();
+</script>
+</body>
+</html>
